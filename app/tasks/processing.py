@@ -52,7 +52,25 @@ def process_transaction_file(self, job_id: str, file_path: str):
         
         logger.info(f"Pipeline Stage 1 complete: Persisted {stats['persisted_count']} rows ({stats['anomaly_count']} anomalies) for job {job_id}.")
         
-        # --- LLM PROCESSING (To be implemented in Step 7) ---
+        # --- LLM PROCESSING (Step 7) ---
+        from app.services.llm_classifier import LLMClassifier
+        from app.services.summary_generator import SummaryGenerator
+        from sqlalchemy import func
+        
+        logger.info(f"Pipeline Stage 2: Batch LLM Classification for job {job_id}.")
+        classifier = LLMClassifier(db, job.id)
+        classifier.classify_batch()
+        
+        logger.info(f"Pipeline Stage 3: LLM Summary Generation for job {job_id}.")
+        generator = SummaryGenerator(db, job.id)
+        generator.generate()
+        
+        # Finalize job
+        job.status = JobStatus.COMPLETED
+        job.completed_at = func.now()
+        db.commit()
+        
+        logger.info(f"Task fully completed for job {job_id}.")
         
     except Exception as e:
         logger.exception(f"Unexpected error processing job {job_id}: {e}")
