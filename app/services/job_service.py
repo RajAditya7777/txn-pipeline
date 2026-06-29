@@ -32,9 +32,9 @@ class JobService:
         
         logger.info(f"Created Job {job.id} for file {file.filename}")
         
-        # TODO: Enqueue Celery task (Implemented in Step 5)
-        # from app.tasks.processing import process_transaction_file
-        # process_transaction_file.delay(str(job.id), file_path)
+        # Enqueue Celery task
+        from app.tasks.processing import process_transaction_file
+        process_transaction_file.delay(str(job.id), file_path)
         
         return job
 
