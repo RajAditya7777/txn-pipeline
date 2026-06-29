@@ -1,0 +1,90 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres_password
+      POSTGRES_DB: txn_pipeline
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d txn_pipeline"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  api:
+    build: .
+    # Automatically execute Alembic migrations on boot before the API starts
+    command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      - PROJECT_NAME=AI Transaction Processing Pipeline
+      - ENVIRONMENT=production
+      - DEBUG=False
+      - LOG_LEVEL=INFO
+      - SECRET_KEY=super-secret-key-change-me
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres_password
+      - POSTGRES_SERVER=db
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=txn_pipeline
+      - REDIS_URL=redis://redis:6379/0
+      # Permits boot if user hasn't supplied GEMINI_API_KEY in their host environment.
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-please_provide_a_valid_key_to_process_fully}
+    volumes:
+      - uploads_data:/app/uploads
+    restart: unless-stopped
+
+  worker:
+    build: .
+    command: celery -A app.workers.celery_app worker --loglevel=info
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      api:
+        condition: service_started
+    environment:
+      - ENVIRONMENT=production
+      - DEBUG=False
+      - LOG_LEVEL=INFO
+      - SECRET_KEY=super-secret-key-change-me
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres_password
+      - POSTGRES_SERVER=db
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=txn_pipeline
+      - REDIS_URL=redis://redis:6379/0
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-please_provide_a_valid_key_to_process_fully}
+    volumes:
+      # Sharing the same volume so the worker can read the CSVs saved by the API
+      - uploads_data:/app/uploads
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  uploads_data:
