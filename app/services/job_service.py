@@ -15,6 +15,12 @@ class JobService:
     def create_job(db: Session, file: UploadFile) -> Job:
         if not file.filename.endswith(".csv"):
             raise HTTPException(status_code=400, detail="Only CSV files are allowed.")
+            
+        file.file.seek(0, os.SEEK_END)
+        size = file.file.tell()
+        file.file.seek(0)
+        if size == 0:
+            raise HTTPException(status_code=400, detail="Uploaded CSV file is empty.")
         
         # Save file to a shared location for the worker to pick up
         os.makedirs("uploads", exist_ok=True)

@@ -4,8 +4,17 @@ import uuid
 from app.models.transaction import Transaction
 from app.services.gemini_client import GeminiClient
 import json
+from pydantic import BaseModel, Field
+from typing import List
 
 logger = logging.getLogger(__name__)
+
+class CategoryPrediction(BaseModel):
+    txn_id: str
+    category: str
+
+class LLMBatchResponse(BaseModel):
+    categories: List[CategoryPrediction] = Field(default_factory=list)
 
 class LLMClassifier:
     """
@@ -55,8 +64,15 @@ Each object must have "txn_id" (matching the input exactly) and "category".
 """
         
         try:
+            # Add basic timing logs
+            import time
+            start_time = time.time()
             result = self.client.generate_json(prompt)
-            categories_map = {str(item.get("txn_id")): item.get("category") for item in result.get("categories", [])}
+            duration = time.time() - start_time
+            logger.info(f"Gemini API categorized {len(transactions)} txns in {duration:.2f}s")
+            
+            validated_response = LLMBatchResponse(**result)
+            categories_map = {item.txn_id: item.category for item in validated_response.categories}
             
             # Map predictions back to the database models
             for txn in transactions:
@@ -66,7 +82,7 @@ Each object must have "txn_id" (matching the input exactly) and "category".
                 if assigned_cat:
                     txn.llm_category = assigned_cat
                     txn.category = assigned_cat 
-                    txn.llm_raw_response = json.dumps(result)
+                    txn.llm_raw_response = validated_response.model_dump_json()
                 else:
                     logger.warning(f"No category returned for txn {ref_id}")
                     txn.llm_failed = True

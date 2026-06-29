@@ -72,18 +72,23 @@ flowchart LR
 | `REDIS_URL` | Redis connection string | redis://redis:6379/0 |
 | `GEMINI_API_KEY` | Key for Google's Gemini API | *required* |
 
-## Running the Project
+## Setup
 
-Copy the example environment configuration:
+1. Copy `.env.example` to `.env`:
 ```bash
 cp .env.example .env
 ```
-Ensure you update the `GEMINI_API_KEY` in the `.env` file with your valid credentials.
 
-Boot the entire stack:
+2. Add your Gemini API key inside the `.env` file:
+```env
+GEMINI_API_KEY=YOUR_GEMINI_API_KEY
+```
+
+3. Run:
 ```bash
 docker compose up --build
 ```
+
 *Note: Alembic database migrations execute automatically within the API container right before the application starts, requiring zero manual database configuration.*
 
 ## API Endpoints

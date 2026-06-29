@@ -5,8 +5,14 @@ import json
 from app.models.transaction import Transaction
 from app.models.job_summary import JobSummary
 from app.services.gemini_client import GeminiClient
+from pydantic import BaseModel
+from typing import Literal
 
 logger = logging.getLogger(__name__)
+
+class SummaryResponse(BaseModel):
+    narrative: str
+    risk_level: Literal["low", "medium", "high", "unknown"]
 
 class SummaryGenerator:
     """
@@ -58,9 +64,15 @@ Provide a JSON output with:
         risk_level = "unknown"
         
         try:
+            import time
+            start_time = time.time()
             result = self.client.generate_json(prompt)
-            narrative = result.get("narrative", narrative)
-            risk_level = result.get("risk_level", risk_level)
+            duration = time.time() - start_time
+            logger.info(f"Gemini API generated summary in {duration:.2f}s")
+            
+            validated_response = SummaryResponse(**result)
+            narrative = validated_response.narrative
+            risk_level = validated_response.risk_level
         except Exception as e:
             logger.error(f"LLM summary generation permanently failed. Proceeding with fallbacks. Error: {e}")
 

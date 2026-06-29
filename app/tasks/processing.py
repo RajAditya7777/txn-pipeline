@@ -13,7 +13,11 @@ def process_transaction_file(self, job_id: str, file_path: str):
     """
     Background Celery task to process the uploaded transactions CSV.
     """
-    logger.info(f"Starting task for job {job_id} using file {file_path}")
+    task_id = self.request.id
+    logger.info(f"Starting Celery Task {task_id} for job {job_id} using file {file_path}")
+    
+    import time
+    start_time = time.time()
     
     db = SessionLocal()
     try:
@@ -70,7 +74,8 @@ def process_transaction_file(self, job_id: str, file_path: str):
         job.completed_at = func.now()
         db.commit()
         
-        logger.info(f"Task fully completed for job {job_id}.")
+        total_time = time.time() - start_time
+        logger.info(f"Task fully completed for job {job_id} in {total_time:.2f}s.")
         
     except Exception as e:
         logger.exception(f"Unexpected error processing job {job_id}: {e}")

@@ -27,4 +27,9 @@ celery_app.conf.update(
     
     # Ensures workers don't hoard tasks if they are long-running
     worker_prefetch_multiplier=1, 
+    
+    # Production reliability
+    task_acks_late=True, # Acknowledge task only after it completes
+    worker_max_tasks_per_child=50, # Prevent memory leaks
+    broker_connection_retry_on_startup=True,
 )
