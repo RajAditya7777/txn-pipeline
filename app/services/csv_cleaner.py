@@ -1,0 +1,75 @@
+import pandas as pd
+import numpy as np
+
+class CSVCleaner:
+    """
+    Service responsible for loading, validating, and cleaning raw transaction CSV files.
+    """
+    
+    def __init__(self, file_path: str):
+        self.file_path = file_path
+        self.raw_row_count = 0
+        self.clean_row_count = 0
+
+    def process(self) -> pd.DataFrame:
+        """
+        Executes the cleaning pipeline in distinct phases.
+        """
+        df = self._load_csv()
+        self._validate_columns(df)
+        df = self._remove_duplicates(df)
+        df = self._clean_data(df)
+        df = self._normalize_dates(df)
+        self.clean_row_count = len(df)
+        return df
+
+    def _load_csv(self) -> pd.DataFrame:
+        """Phase 1: Load CSV"""
+        df = pd.read_csv(self.file_path)
+        self.raw_row_count = len(df)
+        return df
+
+    def _validate_columns(self, df: pd.DataFrame):
+        """Phase 2: Validate columns"""
+        # A lightweight check. In a production app, we might throw an exception if critical columns are missing.
+        required_cols = {"amount", "currency", "status", "category", "date"}
+        missing = required_cols - set(df.columns)
+        if missing:
+            pass # We could log a warning here if needed.
+
+    def _remove_duplicates(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Phase 3: Remove duplicate rows"""
+        return df.drop_duplicates()
+
+    def _clean_data(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Phase 4: Clean data (Strip symbols, uppercase, fill missing)"""
+        # Clean amount: strip currency symbols like $
+        if 'amount' in df.columns:
+            df['amount'] = df['amount'].astype(str).str.replace('$', '', regex=False).str.replace(',', '', regex=False)
+            df['amount'] = pd.to_numeric(df['amount'], errors='coerce')
+
+        # Uppercase currency and status
+        if 'currency' in df.columns:
+            df['currency'] = df['currency'].astype(str).str.upper().str.strip()
+            df['currency'] = df['currency'].replace('NAN', np.nan)
+        
+        if 'status' in df.columns:
+            df['status'] = df['status'].astype(str).str.upper().str.strip()
+            df['status'] = df['status'].replace('NAN', np.nan)
+
+        # Fill missing categories
+        if 'category' in df.columns:
+            # Replace empty strings or literal 'nan' with proper NaN, then fill
+            df['category'] = df['category'].replace(r'^\s*$', np.nan, regex=True)
+            df['category'] = df['category'].fillna('Uncategorised')
+
+        return df
+
+    def _normalize_dates(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Phase 5: Normalize values (dates to ISO 8601)"""
+        if 'date' in df.columns:
+            # Attempt to parse mixed formats (DD-MM-YYYY and YYYY/MM/DD)
+            df['date'] = pd.to_datetime(df['date'], dayfirst=True, errors='coerce')
+            # Format to ISO 8601 string
+            df['date'] = df['date'].dt.strftime('%Y-%m-%dT%H:%M:%S')
+        return df

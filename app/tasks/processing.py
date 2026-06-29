@@ -28,10 +28,31 @@ def process_transaction_file(self, job_id: str, file_path: str):
         
         logger.info(f"Job {job_id} marked as PROCESSING.")
         
-        # --- DATA PROCESSING (To be implemented in Step 6) ---
-        # --- LLM PROCESSING (To be implemented in Step 7) ---
+        # --- DATA PROCESSING (Step 6) ---
+        from app.services.csv_cleaner import CSVCleaner
+        from app.services.anomaly_detector import AnomalyDetector
+        from app.services.transaction_importer import TransactionImporter
         
-        logger.info(f"Task processing scaffold completed for job {job_id}.")
+        # 1. Clean Data
+        cleaner = CSVCleaner(file_path)
+        df = cleaner.process()
+        
+        # Update raw/clean row counts early
+        job.row_count_raw = cleaner.raw_row_count
+        job.row_count_clean = cleaner.clean_row_count
+        db.commit()
+
+        # 2. Detect Anomalies
+        detector = AnomalyDetector()
+        df = detector.detect(df)
+
+        # 3. Persist Transactions
+        importer = TransactionImporter(db, job.id)
+        stats = importer.persist(df)
+        
+        logger.info(f"Pipeline Stage 1 complete: Persisted {stats['persisted_count']} rows ({stats['anomaly_count']} anomalies) for job {job_id}.")
+        
+        # --- LLM PROCESSING (To be implemented in Step 7) ---
         
     except Exception as e:
         logger.exception(f"Unexpected error processing job {job_id}: {e}")
