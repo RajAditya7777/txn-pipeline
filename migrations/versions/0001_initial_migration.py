@@ -9,6 +9,7 @@ from typing import Sequence, Union
 
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy.dialects import postgresql
 
 
 # revision identifiers, used by Alembic.
@@ -19,14 +20,19 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
+    # Create enum type
+    jobstatus_enum = postgresql.ENUM('PENDING', 'PROCESSING', 'COMPLETED', 'FAILED', name='jobstatus', create_type=False)
+    jobstatus_enum.create(op.get_bind(), checkfirst=True)
+
     op.create_table('job',
-    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('id', sa.UUID(), nullable=False),
     sa.Column('filename', sa.String(), nullable=False),
-    sa.Column('status', sa.String(), nullable=False),
+    sa.Column('status', postgresql.ENUM('PENDING', 'PROCESSING', 'COMPLETED', 'FAILED', name='jobstatus', create_type=False), nullable=False),
     sa.Column('row_count_raw', sa.Integer(), nullable=True),
     sa.Column('row_count_clean', sa.Integer(), nullable=True),
     sa.Column('error_message', sa.String(), nullable=True),
-    sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.Column('completed_at', sa.DateTime(timezone=True), nullable=True),
     sa.PrimaryKeyConstraint('id')
     )
@@ -36,15 +42,16 @@ def upgrade() -> None:
     op.create_index(op.f('ix_job_status'), 'job', ['status'], unique=False)
 
     op.create_table('job_summary',
-    sa.Column('id', sa.Integer(), nullable=False),
-    sa.Column('job_id', sa.Integer(), nullable=False),
+    sa.Column('id', sa.UUID(), nullable=False),
+    sa.Column('job_id', sa.UUID(), nullable=False),
     sa.Column('total_spend_inr', sa.Float(), nullable=True),
     sa.Column('total_spend_usd', sa.Float(), nullable=True),
     sa.Column('top_merchants', sa.JSON(), nullable=True),
     sa.Column('anomaly_count', sa.Integer(), nullable=False),
     sa.Column('narrative', sa.String(), nullable=True),
     sa.Column('risk_level', sa.String(), nullable=True),
-    sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.ForeignKeyConstraint(['job_id'], ['job.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id')
     )
@@ -52,8 +59,8 @@ def upgrade() -> None:
     op.create_index(op.f('ix_job_summary_job_id'), 'job_summary', ['job_id'], unique=True)
 
     op.create_table('transaction',
-    sa.Column('id', sa.Integer(), nullable=False),
-    sa.Column('job_id', sa.Integer(), nullable=False),
+    sa.Column('id', sa.UUID(), nullable=False),
+    sa.Column('job_id', sa.UUID(), nullable=False),
     sa.Column('txn_id', sa.String(), nullable=True),
     sa.Column('date', sa.String(), nullable=True),
     sa.Column('merchant', sa.String(), nullable=True),
@@ -67,13 +74,15 @@ def upgrade() -> None:
     sa.Column('llm_category', sa.String(), nullable=True),
     sa.Column('llm_raw_response', sa.String(), nullable=True),
     sa.Column('llm_failed', sa.Boolean(), nullable=False),
-    sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.ForeignKeyConstraint(['job_id'], ['job.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_transaction_account_id'), 'transaction', ['account_id'], unique=False)
     op.create_index(op.f('ix_transaction_id'), 'transaction', ['id'], unique=False)
     op.create_index(op.f('ix_transaction_job_id'), 'transaction', ['job_id'], unique=False)
+    op.create_index('ix_transaction_job_id_status', 'transaction', ['job_id', 'status'], unique=False)
     op.create_index(op.f('ix_transaction_status'), 'transaction', ['status'], unique=False)
     op.create_index(op.f('ix_transaction_txn_id'), 'transaction', ['txn_id'], unique=False)
 
@@ -81,6 +90,7 @@ def upgrade() -> None:
 def downgrade() -> None:
     op.drop_index(op.f('ix_transaction_txn_id'), table_name='transaction')
     op.drop_index(op.f('ix_transaction_status'), table_name='transaction')
+    op.drop_index('ix_transaction_job_id_status', table_name='transaction')
     op.drop_index(op.f('ix_transaction_job_id'), table_name='transaction')
     op.drop_index(op.f('ix_transaction_id'), table_name='transaction')
     op.drop_index(op.f('ix_transaction_account_id'), table_name='transaction')
@@ -93,3 +103,6 @@ def downgrade() -> None:
     op.drop_index(op.f('ix_job_filename'), table_name='job')
     op.drop_index(op.f('ix_job_created_at'), table_name='job')
     op.drop_table('job')
+    
+    jobstatus_enum = postgresql.ENUM('PENDING', 'PROCESSING', 'COMPLETED', 'FAILED', name='jobstatus', create_type=False)
+    jobstatus_enum.drop(op.get_bind(), checkfirst=True)
