@@ -10,6 +10,7 @@ celery_app = Celery(
     backend=settings.REDIS_URL,
     include=["app.tasks.processing"]
 )
+celery_app.set_default()
 
 # Production-ready configuration
 celery_app.conf.update(

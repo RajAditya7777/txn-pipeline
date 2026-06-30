@@ -1,14 +1,12 @@
 import logging
 import time
 import json
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 from app.core.config import settings
 from typing import Any, Dict
 
 logger = logging.getLogger(__name__)
-
-# Configure the Gemini client securely via environment variables
-genai.configure(api_key=settings.GEMINI_API_KEY)
 
 class GeminiClient:
     """
@@ -17,7 +15,10 @@ class GeminiClient:
     """
     def __init__(self):
         # As per the assignment, utilizing the free-tier 1.5 flash model
-        self.model = genai.GenerativeModel('gemini-1.5-flash')
+        self.model_name = 'gemini-1.5-flash'
+        # The new SDK automatically picks up GEMINI_API_KEY from the environment if api_key is not passed,
+        # but we can explicitly pass it from settings just like the previous SDK.
+        self.client = genai.Client(api_key=settings.GEMINI_API_KEY)
 
     def generate_json(self, prompt: str, max_retries: int = 3) -> Dict[str, Any]:
         """
@@ -29,10 +30,11 @@ class GeminiClient:
         
         while attempt <= max_retries:
             try:
-                # Force structured JSON responses (Supported in Gemini 1.5 APIs)
-                response = self.model.generate_content(
-                    prompt,
-                    generation_config=genai.types.GenerationConfig(
+                # Force structured JSON responses using the new genai SDK config
+                response = self.client.models.generate_content(
+                    model=self.model_name,
+                    contents=prompt,
+                    config=types.GenerateContentConfig(
                         response_mime_type="application/json"
                     )
                 )

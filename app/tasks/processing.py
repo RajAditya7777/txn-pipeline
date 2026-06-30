@@ -1,6 +1,6 @@
 import logging
 from uuid import UUID
-from celery import shared_task
+from app.workers.celery_app import celery_app
 from app.database.session import SessionLocal
 from app.models.job import Job, JobStatus
 
@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 
 # Production retry logic: Exponential backoff on any unexpected exceptions.
 # Max retries = 3. 
-@shared_task(bind=True, max_retries=3, autoretry_for=(Exception,), retry_backoff=True)
+@celery_app.task(bind=True, max_retries=3, autoretry_for=(Exception,), retry_backoff=True)
 def process_transaction_file(self, job_id: str, file_path: str):
     """
     Background Celery task to process the uploaded transactions CSV.

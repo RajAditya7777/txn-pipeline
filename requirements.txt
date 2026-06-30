@@ -8,5 +8,5 @@ pydantic
 celery
 redis
 pandas
-google-generativeai
+google-genai
 python-multipart
