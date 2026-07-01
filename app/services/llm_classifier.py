@@ -40,9 +40,8 @@ class LLMClassifier:
             logger.info("No uncategorized transactions found in this batch.")
             return
 
-        logger.info(f"Batch classifying {len(transactions)} transactions via Gemini LLM.")
+        logger.info(f"Classifying {len(transactions)} transactions")
         
-        # Construct payload specifically requested by interviewer
         txns_payload = []
         for txn in transactions:
             txns_payload.append({
@@ -64,17 +63,15 @@ Each object must have "txn_id" (matching the input exactly) and "category".
 """
         
         try:
-            # Add basic timing logs
             import time
             start_time = time.time()
             result = self.client.generate_json(prompt)
             duration = time.time() - start_time
-            logger.info(f"Gemini API categorized {len(transactions)} txns in {duration:.2f}s")
+            logger.info(f"Categorized {len(transactions)} transactions in {duration:.2f}s")
             
             validated_response = LLMBatchResponse(**result)
             categories_map = {item.txn_id: item.category for item in validated_response.categories}
             
-            # Map predictions back to the database models
             for txn in transactions:
                 ref_id = str(txn.txn_id or txn.id)
                 assigned_cat = categories_map.get(ref_id)
@@ -89,7 +86,7 @@ Each object must have "txn_id" (matching the input exactly) and "category".
 
         except Exception as e:
             # Graceful failure: Do not fail the entire job.
-            logger.error(f"Batch LLM classification suffered total failure: {e}")
+            logger.error(f"Classification failed: {e}")
             for txn in transactions:
                 txn.llm_failed = True
                 txn.llm_raw_response = str(e)

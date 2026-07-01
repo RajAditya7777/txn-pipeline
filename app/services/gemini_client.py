@@ -14,10 +14,7 @@ class GeminiClient:
     Enforces JSON outputs and implements robust retry mechanics directly.
     """
     def __init__(self):
-        # As per the assignment, utilizing the free-tier 1.5 flash model
         self.model_name = "gemini-2.5-flash"
-        # The new SDK automatically picks up GEMINI_API_KEY from the environment if api_key is not passed,
-        # but we can explicitly pass it from settings just like the previous SDK.
         self.client = genai.Client(api_key=settings.GEMINI_API_KEY)
 
     def generate_json(self, prompt: str, max_retries: int = 3) -> Dict[str, Any]:
@@ -30,7 +27,6 @@ class GeminiClient:
         
         while attempt <= max_retries:
             try:
-                # Force structured JSON responses using the new genai SDK config
                 response = self.client.models.generate_content(
                     model=self.model_name,
                     contents=prompt,
@@ -48,9 +44,9 @@ class GeminiClient:
             except Exception as e:
                 attempt += 1
                 if attempt > max_retries:
-                    logger.error(f"Gemini API permanently failed after {max_retries} retries: {e}")
+                    logger.error(f"Gemini API failed after {max_retries} retries: {e}")
                     raise e
                 
-                logger.warning(f"Gemini call failed (attempt {attempt}/{max_retries}): {e}. Retrying in {backoff}s...")
+                logger.warning(f"Gemini call failed, retrying in {backoff}s...")
                 time.sleep(backoff)
                 backoff *= 2

@@ -30,13 +30,10 @@ class SummaryGenerator:
         Creates the JobSummary record even if the LLM completely fails (graceful degradation).
         """
         txns = self.db.query(Transaction).filter(Transaction.job_id == self.job_id).all()
-        
-        # Deterministic operational calculations
         total_inr = sum(t.amount for t in txns if t.currency == 'INR' and t.amount)
         total_usd = sum(t.amount for t in txns if t.currency == 'USD' and t.amount)
         anomaly_count = sum(1 for t in txns if t.is_anomaly)
         
-        # Calculate top merchants based on raw spend
         merchant_spend = {}
         for t in txns:
             if t.merchant and t.amount:
@@ -68,15 +65,14 @@ Provide a JSON output with:
             start_time = time.time()
             result = self.client.generate_json(prompt)
             duration = time.time() - start_time
-            logger.info(f"Gemini API generated summary in {duration:.2f}s")
+            logger.info(f"Generated summary in {duration:.2f}s")
             
             validated_response = SummaryResponse(**result)
             narrative = validated_response.narrative
             risk_level = validated_response.risk_level
         except Exception as e:
-            logger.error(f"LLM summary generation permanently failed. Proceeding with fallbacks. Error: {e}")
+            logger.error(f"Summary generation failed, using fallbacks: {e}")
 
-        # Persist summary
         summary = JobSummary(
             job_id=self.job_id,
             total_spend_inr=total_inr,

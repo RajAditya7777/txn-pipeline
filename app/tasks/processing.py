@@ -6,8 +6,7 @@ from app.models.job import Job, JobStatus
 
 logger = logging.getLogger(__name__)
 
-# Production retry logic: Exponential backoff on any unexpected exceptions.
-# Max retries = 3. 
+# Production retry logic: Exponential backoff on unexpected exceptions
 @celery_app.task(bind=True, max_retries=3, autoretry_for=(Exception,), retry_backoff=True)
 def process_transaction_file(self, job_id: str, file_path: str):
     """
@@ -26,18 +25,15 @@ def process_transaction_file(self, job_id: str, file_path: str):
             logger.error(f"Job {job_id} not found in database. Aborting task.")
             return
 
-        # Mark job as processing
         job.status = JobStatus.PROCESSING
         db.commit()
         
         logger.info(f"Job {job_id} marked as PROCESSING.")
         
-        # --- DATA PROCESSING (Step 6) ---
         from app.services.csv_cleaner import CSVCleaner
         from app.services.anomaly_detector import AnomalyDetector
         from app.services.transaction_importer import TransactionImporter
         
-        # 1. Clean Data
         cleaner = CSVCleaner(file_path)
         df = cleaner.process()
         
@@ -46,36 +42,32 @@ def process_transaction_file(self, job_id: str, file_path: str):
         job.row_count_clean = cleaner.clean_row_count
         db.commit()
 
-        # 2. Detect Anomalies
         detector = AnomalyDetector()
         df = detector.detect(df)
 
-        # 3. Persist Transactions
         importer = TransactionImporter(db, job.id)
         stats = importer.persist(df)
         
-        logger.info(f"Pipeline Stage 1 complete: Persisted {stats['persisted_count']} rows ({stats['anomaly_count']} anomalies) for job {job_id}.")
+        logger.info(f"Persisted {stats['persisted_count']} rows ({stats['anomaly_count']} anomalies) for job {job_id}")
         
-        # --- LLM PROCESSING (Step 7) ---
         from app.services.llm_classifier import LLMClassifier
         from app.services.summary_generator import SummaryGenerator
         from sqlalchemy import func
         
-        logger.info(f"Pipeline Stage 2: Batch LLM Classification for job {job_id}.")
+        logger.info(f"Starting LLM classification for job {job_id}")
         classifier = LLMClassifier(db, job.id)
         classifier.classify_batch()
         
-        logger.info(f"Pipeline Stage 3: LLM Summary Generation for job {job_id}.")
+        logger.info(f"Starting LLM summary generation for job {job_id}")
         generator = SummaryGenerator(db, job.id)
         generator.generate()
         
-        # Finalize job
         job.status = JobStatus.COMPLETED
         job.completed_at = func.now()
         db.commit()
         
         total_time = time.time() - start_time
-        logger.info(f"Task fully completed for job {job_id} in {total_time:.2f}s.")
+        logger.info(f"Job {job_id} completed in {total_time:.2f}s")
         
     except Exception as e:
         logger.exception(f"Unexpected error processing job {job_id}: {e}")

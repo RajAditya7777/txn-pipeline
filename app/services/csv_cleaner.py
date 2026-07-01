@@ -45,12 +45,10 @@ class CSVCleaner:
 
     def _clean_data(self, df: pd.DataFrame) -> pd.DataFrame:
         """Phase 4: Clean data (Strip symbols, uppercase, fill missing)"""
-        # Clean amount: strip currency symbols like $
         if 'amount' in df.columns:
             df['amount'] = df['amount'].astype(str).str.replace('$', '', regex=False).str.replace(',', '', regex=False)
             df['amount'] = pd.to_numeric(df['amount'], errors='coerce')
 
-        # Uppercase currency and status
         if 'currency' in df.columns:
             df['currency'] = df['currency'].astype(str).str.upper().str.strip()
             df['currency'] = df['currency'].replace('NAN', np.nan)
@@ -59,9 +57,7 @@ class CSVCleaner:
             df['status'] = df['status'].astype(str).str.upper().str.strip()
             df['status'] = df['status'].replace('NAN', np.nan)
 
-        # Fill missing categories
         if 'category' in df.columns:
-            # Replace empty strings or literal 'nan' with proper NaN, then fill
             df['category'] = df['category'].replace(r'^\s*$', np.nan, regex=True)
             df['category'] = df['category'].fillna('Uncategorised')
 
@@ -70,8 +66,6 @@ class CSVCleaner:
     def _normalize_dates(self, df: pd.DataFrame) -> pd.DataFrame:
         """Phase 5: Normalize values (dates to ISO 8601)"""
         if 'date' in df.columns:
-            # Attempt to parse mixed formats (DD-MM-YYYY and YYYY/MM/DD)
             df['date'] = pd.to_datetime(df['date'], dayfirst=True, errors='coerce')
-            # Format to ISO 8601 string
             df['date'] = df['date'].dt.strftime('%Y-%m-%dT%H:%M:%S')
         return df
