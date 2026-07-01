@@ -39,7 +39,9 @@ class CSVCleaner:
 
     def _remove_duplicates(self, df: pd.DataFrame) -> pd.DataFrame:
         """Phase 3: Remove duplicate rows"""
-        return df.drop_duplicates()
+        # Remove duplicates based only on core business fields, ignoring unique identifiers like txn_id
+        subset = [col for col in ['merchant', 'amount', 'date', 'currency', 'category', 'status'] if col in df.columns]
+        return df.drop_duplicates(subset=subset)
 
     def _clean_data(self, df: pd.DataFrame) -> pd.DataFrame:
         """Phase 4: Clean data (Strip symbols, uppercase, fill missing)"""

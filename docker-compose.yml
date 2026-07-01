@@ -40,6 +40,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    env_file:
+      - .env
     environment:
       - PROJECT_NAME=AI Transaction Processing Pipeline
       - ENVIRONMENT=production
@@ -52,8 +54,7 @@ services:
       - POSTGRES_PORT=5432
       - POSTGRES_DB=txn_pipeline
       - REDIS_URL=redis://redis:6379/0
-      # Permits boot if user hasn't supplied GEMINI_API_KEY in their host environment.
-      - GEMINI_API_KEY=${GEMINI_API_KEY:-please_provide_a_valid_key_to_process_fully}
+      - GEMINI_API_KEY
     volumes:
       - uploads_data:/app/uploads
     restart: unless-stopped
@@ -68,6 +69,8 @@ services:
         condition: service_healthy
       api:
         condition: service_started
+    env_file:
+      - .env
     environment:
       - ENVIRONMENT=production
       - DEBUG=False
@@ -79,7 +82,7 @@ services:
       - POSTGRES_PORT=5432
       - POSTGRES_DB=txn_pipeline
       - REDIS_URL=redis://redis:6379/0
-      - GEMINI_API_KEY=${GEMINI_API_KEY:-please_provide_a_valid_key_to_process_fully}
+      - GEMINI_API_KEY
     volumes:
       # Sharing the same volume so the worker can read the CSVs saved by the API
       - uploads_data:/app/uploads

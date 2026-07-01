@@ -15,7 +15,7 @@ class GeminiClient:
     """
     def __init__(self):
         # As per the assignment, utilizing the free-tier 1.5 flash model
-        self.model_name = 'gemini-1.5-flash'
+        self.model_name = "gemini-2.5-flash"
         # The new SDK automatically picks up GEMINI_API_KEY from the environment if api_key is not passed,
         # but we can explicitly pass it from settings just like the previous SDK.
         self.client = genai.Client(api_key=settings.GEMINI_API_KEY)
