@@ -1,6 +1,6 @@
 # AI-Powered Transaction Processing Pipeline
 
-An asynchronous backend pipeline that processes financial transaction CSV files, detects anomalies, enriches uncategorized transactions using Gemini 1.5 Flash, and exposes real-time job tracking APIs. The project is fully containerized using Docker Compose and includes a React dashboard for monitoring and visualization.
+An asynchronous backend pipeline that processes financial transaction CSV files, detects anomalies, enriches uncategorized transactions using Gemini 2.5 Flash, and exposes real-time job tracking APIs. The project is fully containerized using Docker Compose and includes a React dashboard for monitoring and visualization.
 
 ---
 
@@ -42,7 +42,7 @@ An asynchronous backend pipeline that processes financial transaction CSV files,
 | Message Broker | Redis |
 | ORM | SQLAlchemy |
 | Database Migration | Alembic |
-| LLM | Google Gemini 1.5 Flash |
+| LLM | Google Gemini 2.5 Flash |
 | Charts | Recharts |
 | Containerization | Docker & Docker Compose |
 
@@ -148,7 +148,7 @@ The worker identifies anomalies using:
 
 # LLM Integration
 
-Gemini 1.5 Flash is used for two independent tasks.
+Gemini 2.5 Flash is used for two independent tasks.
 
 ### Transaction Classification
 

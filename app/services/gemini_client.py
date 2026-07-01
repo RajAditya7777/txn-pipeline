@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 class GeminiClient:
     """
-    Dedicated HTTP client for communicating with the Gemini 1.5 Flash API.
+    Dedicated HTTP client for communicating with the Gemini 2.5 Flash API.
     Enforces JSON outputs and implements robust retry mechanics directly.
     """
     def __init__(self):
